@@ -204,6 +204,93 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
 
 회사 방화벽, 프록시, VPN 또는 보안 프로그램이 Python 프로세스의 외부 통신을 제한하는지 확인합니다. 이 애플리케이션은 별도의 프록시 설정 화면을 제공하지 않습니다.
 
+## 11. GitHub 저장소와 로컬 폴더 연결
+
+GitHub 저장소 주소는 다음과 같습니다.
+
+```text
+https://github.com/sunyoong/network-diagnostic-tool.git
+```
+
+### 권장 방법: 기존 폴더를 백업하고 Clone
+
+압축 파일에서 해제한 기존 프로젝트와 GitHub 저장소는 Git 이력이 다를 수 있습니다. 기존 파일과 충돌하지 않도록 폴더를 백업한 뒤 GitHub 저장소를 새로 Clone하는 방법이 가장 안전합니다.
+
+실행 중인 서버가 있다면 먼저 `Ctrl+C`로 종료하고, PowerShell에서 다음 명령을 실행합니다.
+
+```powershell
+Set-Location "C:\sypark\개발\네트워크진단서비스"
+
+Rename-Item `
+  -LiteralPath ".\network-diagnostic-tool" `
+  -NewName "network-diagnostic-tool-backup"
+
+git clone https://github.com/sunyoong/network-diagnostic-tool.git
+Set-Location ".\network-diagnostic-tool"
+```
+
+저장소가 비공개이므로 GitHub 로그인이나 브라우저 인증을 요청할 수 있습니다.
+
+Clone한 저장소에는 `.venv`와 `.env`가 포함되지 않습니다. 프로젝트 내부에 Python 3.12 가상환경과 로컬 설정을 다시 생성합니다.
+
+```powershell
+py -3.12 -m venv .venv
+
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+```
+
+기존 백업 폴더의 `.env`에 필요한 설정이 있다면 내용을 검토한 후 새 `.env`에 직접 반영합니다. `.venv` 폴더는 복사하지 말고 새로 생성하는 것이 안전합니다.
+
+연결 상태는 다음 명령으로 확인합니다.
+
+```powershell
+git remote -v
+git status
+```
+
+### 기존 폴더에 원격 저장소만 연결
+
+기존 폴더를 그대로 사용해야 한다면 다음 명령으로 GitHub 원격 저장소를 등록할 수 있습니다.
+
+```powershell
+Set-Location "C:\sypark\개발\네트워크진단서비스\network-diagnostic-tool"
+
+git init
+git remote add origin https://github.com/sunyoong/network-diagnostic-tool.git
+git fetch origin
+git remote -v
+```
+
+이미 `origin`이 등록되어 있다는 오류가 나오면 현재 주소부터 확인합니다.
+
+```powershell
+git remote get-url origin
+```
+
+기존 로컬 파일과 GitHub 파일이 서로 다르면 `pull` 과정에서 충돌할 수 있습니다. 이 경우 파일을 덮어쓰거나 강제로 병합하지 말고, 위의 **기존 폴더 백업 후 Clone** 방법을 사용하세요.
+
+### 이후 GitHub 변경사항 받기
+
+프로젝트 폴더에서 다음 명령을 실행합니다.
+
+```powershell
+git pull
+```
+
+로컬에서 수정한 내용을 GitHub에 올릴 때는 변경 파일을 확인한 후 커밋하고 푸시합니다. 실제 `.env`와 `.venv`는 `.gitignore`에 의해 제외됩니다.
+
+```powershell
+git status
+git add .
+git commit -m "변경 내용 설명"
+git push
+```
+
 ## 운영 시 참고사항
 
 - `--reload` 옵션은 개발 환경에서만 사용합니다.
