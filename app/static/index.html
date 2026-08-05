@@ -6,170 +6,137 @@
 <title>NetProbe — 네트워크 진단 콘솔</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-<div class="scanline" aria-hidden="true"></div>
-
 <header class="topbar">
-  <div class="topbar-inner">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <div class="brand-text">
-        <span class="brand-name">NetProbe</span>
-        <span class="brand-sub">네트워크 진단 콘솔</span>
-      </div>
-    </div>
-    <p class="brand-hint">대상 URL·호스트·포트를 입력하면 서버가 직접 접속해 결과를 확인합니다.</p>
+  <a class="product-name" href="/" aria-label="NetProbe 홈">
+    <span class="product-symbol" aria-hidden="true">N</span>
+    <span>NetProbe <small>Network Diagnostic Console</small></span>
+  </a>
+  <div class="top-actions" aria-label="시스템 상태">
+    <span class="service-state"><i aria-hidden="true"></i> Service online</span>
+    <a class="top-action" href="/docs" title="API 문서" aria-label="API 문서">?</a>
+    <button class="top-action" type="button" title="새로 고침" aria-label="새로 고침" onclick="location.reload()">↻</button>
   </div>
 </header>
 
-<main class="console">
-  <nav class="tabs" role="tablist" aria-label="진단 기능 선택">
-    <button class="tab" role="tab" id="tab-btn-http" aria-controls="tab-http" aria-selected="true" data-tab="http">
-      <span class="tab-index">01</span> HTTP 확인
-    </button>
-    <button class="tab" role="tab" id="tab-btn-port" aria-controls="tab-port" aria-selected="false" tabindex="-1" data-tab="port">
-      <span class="tab-index">02</span> 포트 확인
-    </button>
-    <button class="tab" role="tab" id="tab-btn-dns" aria-controls="tab-dns" aria-selected="false" tabindex="-1" data-tab="dns">
-      <span class="tab-index">03</span> DNS 조회
-    </button>
-    <button class="tab" role="tab" id="tab-btn-client" aria-controls="tab-client" aria-selected="false" tabindex="-1" data-tab="client">
-      <span class="tab-index">04</span> 접속 정보
-    </button>
-  </nav>
-
-  <!-- ===================== HTTP 확인 ===================== -->
-  <section class="panel" id="tab-http" role="tabpanel" aria-labelledby="tab-btn-http">
-    <form class="probe-form" id="form-http" novalidate>
-      <div class="field field-grow">
-        <label for="http-url">URL</label>
-        <input type="text" id="http-url" name="url" placeholder="https://example.com" autocomplete="off" required>
-        <p class="field-error" id="http-url-error" role="alert"></p>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-summary">
+      <span class="summary-icon" aria-hidden="true">⌁</span>
+      <div>
+        <strong>진단 도구</strong>
+        <span>SERVER-SIDE PROBE</span>
       </div>
-      <div class="field">
-        <label for="http-method">요청 방식</label>
-        <select id="http-method" name="method">
-          <option value="GET" selected>GET</option>
-          <option value="HEAD">HEAD</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="http-timeout">타임아웃(초)</label>
-        <input type="number" id="http-timeout" name="timeout_seconds" min="1" max="10" value="5">
-      </div>
-      <div class="field field-check">
-        <label class="checkbox-label">
-          <input type="checkbox" id="http-follow" name="follow_redirects" checked>
-          리다이렉트 추적
-        </label>
-      </div>
-      <button type="submit" class="btn-run" id="http-submit">
-        <span class="btn-label">확인</span>
-      </button>
-    </form>
-
-    <div class="result-area" id="http-result" aria-live="polite" tabindex="-1">
-      <p class="result-placeholder">진단 결과가 여기에 표시됩니다.</p>
     </div>
-  </section>
 
-  <!-- ===================== 포트 확인 ===================== -->
-  <section class="panel is-hidden" id="tab-port" role="tabpanel" aria-labelledby="tab-btn-port" hidden>
-    <form class="probe-form" id="form-port" novalidate>
-      <div class="field field-grow">
-        <label for="port-host">호스트</label>
-        <input type="text" id="port-host" name="host" placeholder="example.com 또는 203.0.113.10" autocomplete="off" required>
-        <p class="field-error" id="port-host-error" role="alert"></p>
-      </div>
-      <div class="field">
-        <label for="port-port">포트</label>
-        <input type="number" id="port-port" name="port" min="1" max="65535" placeholder="443" required>
-        <p class="field-error" id="port-port-error" role="alert"></p>
-      </div>
-      <div class="field">
-        <label for="port-timeout">타임아웃(초)</label>
-        <input type="number" id="port-timeout" name="timeout_seconds" min="1" max="10" value="3">
-      </div>
-      <button type="submit" class="btn-run" id="port-submit">
-        <span class="btn-label">확인</span>
+    <p class="nav-label">DIAGNOSTICS</p>
+    <nav class="tabs" role="tablist" aria-label="진단 기능 선택">
+      <button class="tab" role="tab" id="tab-btn-http" aria-controls="tab-http" aria-selected="true" data-tab="http">
+        <span class="nav-icon" aria-hidden="true">⌁</span><span>HTTP 상태 확인</span>
       </button>
-      <div class="quick-ports" aria-label="자주 쓰는 포트 빠른 선택">
-        <span class="quick-ports-label">빠른 선택</span>
-        <div class="quick-ports-list">
-          <button type="button" class="chip" data-port="22">22 SSH</button>
-          <button type="button" class="chip" data-port="53">53 DNS</button>
-          <button type="button" class="chip" data-port="80">80 HTTP</button>
-          <button type="button" class="chip" data-port="443">443 HTTPS</button>
-          <button type="button" class="chip" data-port="3306">3306 MySQL</button>
-          <button type="button" class="chip" data-port="5432">5432 PostgreSQL</button>
-          <button type="button" class="chip" data-port="6379">6379 Redis</button>
-          <button type="button" class="chip" data-port="8080">8080 HTTP-Alt</button>
+      <button class="tab" role="tab" id="tab-btn-port" aria-controls="tab-port" aria-selected="false" tabindex="-1" data-tab="port">
+        <span class="nav-icon" aria-hidden="true">⇄</span><span>TCP 포트 확인</span>
+      </button>
+      <button class="tab" role="tab" id="tab-btn-dns" aria-controls="tab-dns" aria-selected="false" tabindex="-1" data-tab="dns">
+        <span class="nav-icon" aria-hidden="true">◎</span><span>DNS 레코드 조회</span>
+      </button>
+      <button class="tab" role="tab" id="tab-btn-client" aria-controls="tab-client" aria-selected="false" tabindex="-1" data-tab="client">
+        <span class="nav-icon" aria-hidden="true">▣</span><span>내 접속 정보</span>
+      </button>
+    </nav>
+
+    <p class="nav-label nav-label-secondary">SYSTEM</p>
+    <div class="sidebar-info">
+      <div><span aria-hidden="true">✓</span><p><strong>보안 정책 적용</strong><small>SSRF 보호 활성화</small></p></div>
+      <div><span aria-hidden="true">◷</span><p><strong>요청 제한</strong><small>분당 최대 30회</small></p></div>
+      <div><span aria-hidden="true">◇</span><p><strong>진단 기록</strong><small>브라우저에 최대 5건</small></p></div>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <header class="workspace-head">
+      <div class="workspace-title-icon" aria-hidden="true">⌁</div>
+      <div>
+        <h1>네트워크 진단</h1>
+        <p>대상 시스템의 연결 상태와 DNS 정보를 서버에서 직접 확인합니다.</p>
+      </div>
+    </header>
+
+    <div class="workspace-body">
+      <section class="panel" id="tab-http" role="tabpanel" aria-labelledby="tab-btn-http">
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true">⌁</span>
+          <div><h2>HTTP / HTTPS 상태 확인</h2><p>웹 주소의 응답 코드, 지연 시간, 최종 연결 주소를 확인합니다.</p></div>
         </div>
-      </div>
-    </form>
+        <form class="probe-form" id="form-http" novalidate>
+          <div class="field field-grow">
+            <label for="http-url">대상 URL</label>
+            <input type="text" id="http-url" name="url" placeholder="https://example.com" autocomplete="off" required>
+            <p class="field-error" id="http-url-error" role="alert"></p>
+          </div>
+          <div class="form-row">
+            <div class="field"><label for="http-method">요청 방식</label><select id="http-method" name="method"><option value="GET" selected>GET</option><option value="HEAD">HEAD</option></select></div>
+            <div class="field"><label for="http-timeout">타임아웃(초)</label><input type="number" id="http-timeout" name="timeout_seconds" min="1" max="10" value="5"></div>
+            <div class="field field-check"><label class="checkbox-label"><input type="checkbox" id="http-follow" name="follow_redirects" checked> 리다이렉트 추적</label></div>
+          </div>
+          <button type="submit" class="btn-run" id="http-submit"><span class="btn-label">진단 시작</span></button>
+        </form>
+        <div class="result-area" id="http-result" aria-live="polite" tabindex="-1"><p class="result-placeholder"><span>○</span> 진단을 실행하면 결과가 여기에 표시됩니다.</p></div>
+      </section>
 
-    <div class="result-area" id="port-result" aria-live="polite" tabindex="-1">
-      <p class="result-placeholder">진단 결과가 여기에 표시됩니다.</p>
+      <section class="panel is-hidden" id="tab-port" role="tabpanel" aria-labelledby="tab-btn-port" hidden>
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true">⇄</span>
+          <div><h2>TCP 포트 연결 확인</h2><p>대상 호스트의 특정 TCP 포트가 연결 가능한지 확인합니다.</p></div>
+        </div>
+        <form class="probe-form" id="form-port" novalidate>
+          <div class="form-row form-row-primary">
+            <div class="field field-grow"><label for="port-host">대상 호스트</label><input type="text" id="port-host" name="host" placeholder="example.com 또는 203.0.113.10" autocomplete="off" required><p class="field-error" id="port-host-error" role="alert"></p></div>
+            <div class="field field-port"><label for="port-port">포트</label><input type="number" id="port-port" name="port" min="1" max="65535" placeholder="443" required><p class="field-error" id="port-port-error" role="alert"></p></div>
+            <div class="field field-timeout"><label for="port-timeout">타임아웃(초)</label><input type="number" id="port-timeout" name="timeout_seconds" min="1" max="10" value="3"></div>
+          </div>
+          <div class="quick-ports" aria-label="자주 쓰는 포트 빠른 선택"><span class="quick-ports-label">빠른 선택</span><div class="quick-ports-list"><button type="button" class="chip" data-port="22">22 SSH</button><button type="button" class="chip" data-port="53">53 DNS</button><button type="button" class="chip" data-port="80">80 HTTP</button><button type="button" class="chip" data-port="443">443 HTTPS</button><button type="button" class="chip" data-port="3306">3306 MySQL</button><button type="button" class="chip" data-port="5432">5432 PostgreSQL</button><button type="button" class="chip" data-port="6379">6379 Redis</button><button type="button" class="chip" data-port="8080">8080 HTTP-Alt</button></div></div>
+          <button type="submit" class="btn-run" id="port-submit"><span class="btn-label">연결 확인</span></button>
+        </form>
+        <div class="result-area" id="port-result" aria-live="polite" tabindex="-1"><p class="result-placeholder"><span>○</span> 진단을 실행하면 결과가 여기에 표시됩니다.</p></div>
+      </section>
+
+      <section class="panel is-hidden" id="tab-dns" role="tabpanel" aria-labelledby="tab-btn-dns" hidden>
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true">◎</span>
+          <div><h2>DNS 레코드 조회</h2><p>도메인의 A, AAAA, CNAME, MX, TXT, NS 레코드를 조회합니다.</p></div>
+        </div>
+        <form class="probe-form" id="form-dns" novalidate>
+          <div class="form-row form-row-primary">
+            <div class="field field-grow"><label for="dns-domain">도메인</label><input type="text" id="dns-domain" name="domain" placeholder="example.com" autocomplete="off" required><p class="field-error" id="dns-domain-error" role="alert"></p></div>
+            <div class="field field-type"><label for="dns-type">레코드 유형</label><select id="dns-type" name="record_type"><option value="A" selected>A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option><option value="MX">MX</option><option value="TXT">TXT</option><option value="NS">NS</option></select></div>
+          </div>
+          <button type="submit" class="btn-run" id="dns-submit"><span class="btn-label">레코드 조회</span></button>
+        </form>
+        <div class="result-area" id="dns-result" aria-live="polite" tabindex="-1"><p class="result-placeholder"><span>○</span> 조회를 실행하면 결과가 여기에 표시됩니다.</p></div>
+      </section>
+
+      <section class="panel is-hidden" id="tab-client" role="tabpanel" aria-labelledby="tab-btn-client" hidden>
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true">▣</span>
+          <div><h2>내 접속 정보</h2><p>서버가 확인한 현재 브라우저의 접속 IP와 요청 정보를 보여줍니다.</p></div>
+        </div>
+        <div class="probe-form probe-form-static"><p class="static-hint">페이지 요청을 기준으로 접속 정보를 안전하게 조회합니다.</p><button type="button" class="btn-run" id="client-refresh"><span class="btn-label">정보 새로 고침</span></button></div>
+        <div class="result-area" id="client-result" aria-live="polite" tabindex="-1"><p class="result-placeholder"><span>○</span> 접속 정보를 불러오는 중입니다…</p></div>
+      </section>
+
+      <section class="history" aria-label="최근 조회 결과">
+        <div class="history-head"><div><h2>최근 진단 기록</h2><p>이 브라우저에 저장된 최근 결과입니다.</p></div><div class="history-actions"><span><strong id="history-count">0</strong> / 5</span><button type="button" class="btn-clear" id="history-clear">기록 지우기</button></div></div>
+        <ul class="history-list" id="history-list"></ul>
+      </section>
     </div>
-  </section>
 
-  <!-- ===================== DNS 조회 ===================== -->
-  <section class="panel is-hidden" id="tab-dns" role="tabpanel" aria-labelledby="tab-btn-dns" hidden>
-    <form class="probe-form" id="form-dns" novalidate>
-      <div class="field field-grow">
-        <label for="dns-domain">도메인</label>
-        <input type="text" id="dns-domain" name="domain" placeholder="example.com" autocomplete="off" required>
-        <p class="field-error" id="dns-domain-error" role="alert"></p>
-      </div>
-      <div class="field">
-        <label for="dns-type">레코드 유형</label>
-        <select id="dns-type" name="record_type">
-          <option value="A" selected>A</option>
-          <option value="AAAA">AAAA</option>
-          <option value="CNAME">CNAME</option>
-          <option value="MX">MX</option>
-          <option value="TXT">TXT</option>
-          <option value="NS">NS</option>
-        </select>
-      </div>
-      <button type="submit" class="btn-run" id="dns-submit">
-        <span class="btn-label">조회</span>
-      </button>
-    </form>
-
-    <div class="result-area" id="dns-result" aria-live="polite" tabindex="-1">
-      <p class="result-placeholder">조회 결과가 여기에 표시됩니다.</p>
-    </div>
-  </section>
-
-  <!-- ===================== 접속 정보 ===================== -->
-  <section class="panel is-hidden" id="tab-client" role="tabpanel" aria-labelledby="tab-btn-client" hidden>
-    <div class="probe-form probe-form-static">
-      <p class="static-hint">이 탭을 열면 서버가 수신한 접속 정보를 자동으로 조회합니다.</p>
-      <button type="button" class="btn-run" id="client-refresh">
-        <span class="btn-label">다시 조회</span>
-      </button>
-    </div>
-    <div class="result-area" id="client-result" aria-live="polite" tabindex="-1">
-      <p class="result-placeholder">접속 정보를 불러오는 중입니다…</p>
-    </div>
-  </section>
-
-  <section class="history" aria-label="최근 조회 결과">
-    <div class="history-head">
-      <h2>최근 조회 <span class="history-count" id="history-count">0</span>/5</h2>
-      <button type="button" class="btn-clear" id="history-clear">기록 지우기</button>
-    </div>
-    <ul class="history-list" id="history-list"></ul>
-  </section>
-</main>
-
-<footer class="footer">
-  <p>모든 진단은 서버가 대상 주소로 직접 접속하여 수행됩니다. 사설망·루프백·메타데이터 주소는 자동으로 차단됩니다.</p>
-</footer>
+    <footer class="footer"><span class="footer-lock" aria-hidden="true">◆</span><p>모든 진단은 서버에서 수행됩니다. 사설망·루프백·메타데이터 주소는 기본적으로 차단됩니다.</p><a href="/docs">API 문서</a></footer>
+  </main>
+</div>
 
 <script src="/static/js/app.js"></script>
 </body>
