@@ -1,0 +1,213 @@
+# 네트워크 진단 도구 실행 가이드
+
+이 문서는 `network-diagnostic-tool.zip`에 포함된 코드를 로컬 PC에서 실행하는 방법을 설명합니다. 이 프로젝트는 **FastAPI 기반 Python 웹 애플리케이션**이며, 데이터베이스나 별도의 프런트엔드 빌드 과정은 필요하지 않습니다.
+
+## 1. 사전 준비
+
+- Python 3.10 이상
+- 인터넷 연결(최초 Python 패키지 설치 및 외부 네트워크 진단 시 필요)
+- 원본 압축 파일: `C:\sypark\개발\네트워크진단서비스\network-diagnostic-tool.zip`
+
+Windows에서 다음 명령으로 Python 설치 여부를 확인합니다.
+
+```powershell
+python --version
+```
+
+명령을 찾을 수 없다면 [Python 공식 사이트](https://www.python.org/downloads/)에서 Python을 설치합니다. 설치 화면에서 **Add Python to PATH**를 선택해야 합니다. 설치 후 새 PowerShell 창을 열어 다시 확인합니다.
+
+> 이 가이드를 작성한 PC에서는 현재 `python` 및 `py` 명령이 확인되지 않았습니다. 이 PC에서 실행하려면 먼저 Python을 설치해야 합니다.
+
+## 2. 압축 해제
+
+PowerShell에서 다음 명령을 실행합니다.
+
+```powershell
+Set-Location "C:\sypark\개발\네트워크진단서비스"
+Expand-Archive -LiteralPath ".\network-diagnostic-tool.zip" -DestinationPath "." -Force
+Set-Location ".\network-diagnostic-tool"
+```
+
+이미 압축을 해제했다면 프로젝트 루트, 즉 `requirements.txt`와 `app` 폴더가 보이는 위치로 이동하면 됩니다.
+
+## 3. 가상환경 생성 및 활성화
+
+프로젝트에 필요한 패키지가 다른 Python 프로젝트와 섞이지 않도록 가상환경을 사용합니다.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+PowerShell 실행 정책 때문에 활성화가 차단되면 현재 PowerShell 프로세스에만 임시로 허용한 뒤 다시 활성화합니다.
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+활성화되면 명령줄 앞에 `(.venv)`가 표시됩니다.
+
+## 4. 패키지 설치
+
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+설치되는 주요 패키지는 FastAPI, Uvicorn, HTTPX, dnspython, Pydantic 및 Pytest입니다.
+
+## 5. 환경 설정
+
+예제 설정 파일을 `.env`로 복사합니다.
+
+```powershell
+Copy-Item .env.example .env
+```
+
+공개 인터넷 주소만 진단한다면 기본값을 그대로 사용할 수 있습니다. 기본 설정은 보안을 위해 로컬·사설 IP 대역과 임의의 TCP 포트를 차단합니다.
+
+사내망 또는 로컬 장비를 진단해야 하는 경우 `.env`에서 아래 값을 변경합니다.
+
+```dotenv
+NDT_ALLOW_PRIVATE_TARGETS=true
+```
+
+이 값을 `true`로 설정하면 사설 IP 접근 제한과 TCP 포트 허용 목록 제한이 완화됩니다. 외부에 공개된 서버에서는 SSRF 위험이 있으므로, 인증된 내부 사용자만 접근할 수 있는 환경에서만 사용해야 합니다.
+
+기본 공개 모드에서 허용되는 TCP 포트는 다음과 같습니다.
+
+```dotenv
+NDT_ALLOWED_TCP_PORTS=[22,53,80,443,5432,3306,6379,8080]
+```
+
+## 6. 서버 실행
+
+반드시 `app` 폴더의 상위 디렉터리인 프로젝트 루트에서 실행합니다.
+
+```powershell
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+정상 실행되면 브라우저에서 다음 주소를 엽니다.
+
+- 웹 화면: <http://127.0.0.1:8000>
+- API 문서(Swagger UI): <http://127.0.0.1:8000/docs>
+- 상태 확인: <http://127.0.0.1:8000/health>
+
+상태 확인 결과가 아래와 같으면 정상입니다.
+
+```json
+{"status":"ok"}
+```
+
+서버를 종료하려면 서버를 실행한 PowerShell 창에서 `Ctrl+C`를 누릅니다.
+
+### 같은 네트워크의 다른 PC에서도 접속하기
+
+개발 PC의 모든 네트워크 인터페이스에서 요청을 받도록 실행합니다.
+
+```powershell
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+다른 PC에서는 `http://개발-PC-IP:8000`으로 접속합니다. 접속되지 않으면 Windows 방화벽의 TCP 8000 포트 인바운드 허용 여부를 확인합니다. `--reload`는 개발용 기능이므로 공유 또는 운영 실행에서는 제외하는 것이 좋습니다.
+
+## 7. 기능 확인
+
+웹 화면에서 다음 기능을 사용할 수 있습니다.
+
+- HTTP 상태 확인: `http://` 또는 `https://`로 시작하는 URL 입력
+- TCP 포트 확인: 호스트와 포트 입력
+- DNS 조회: 스킴과 경로를 제외한 도메인 입력(예: `example.com`)
+- 접속 정보: 클라이언트 IP, User-Agent, 프로토콜 등 확인
+
+PowerShell에서 API를 직접 확인하려면 다음 예시를 사용할 수 있습니다.
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/http-check" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"url":"https://example.com","method":"GET","timeout_seconds":5,"follow_redirects":true}'
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/port-check" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"host":"example.com","port":443,"timeout_seconds":3}'
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/dns-lookup" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"domain":"example.com","record_type":"A"}'
+```
+
+## 8. 테스트 실행
+
+서버를 별도로 실행하지 않은 상태에서도 프로젝트 루트에서 테스트할 수 있습니다.
+
+```powershell
+python -m pytest
+```
+
+## 9. macOS/Linux 실행 명령
+
+압축을 해제하고 프로젝트 루트로 이동한 뒤 아래 명령을 실행합니다.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+cp .env.example .env
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+## 10. 자주 발생하는 문제
+
+### `python` 명령을 찾을 수 없음
+
+Python을 설치하면서 PATH 옵션을 선택했는지 확인하고 PowerShell을 새로 엽니다. Windows에서 Python Launcher가 설치되어 있다면 `python` 대신 `py`를 사용할 수도 있습니다.
+
+### `No module named uvicorn` 또는 `No module named fastapi`
+
+가상환경 활성화 여부를 확인한 후 패키지를 다시 설치합니다.
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+### `Could not import module "app.main"`
+
+현재 위치가 잘못된 경우입니다. `requirements.txt`와 `app` 폴더가 함께 보이는 프로젝트 루트로 이동한 뒤 실행합니다.
+
+```powershell
+Get-ChildItem
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### 포트 8000이 이미 사용 중임
+
+다른 포트로 실행합니다.
+
+```powershell
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
+```
+
+이 경우 접속 주소도 `http://127.0.0.1:8001`로 변경됩니다.
+
+### 사설 IP 또는 특정 포트 진단이 차단됨
+
+기본 보안 정책에 따른 정상 동작입니다. 인증된 사내 환경에서만 `.env`의 `NDT_ALLOW_PRIVATE_TARGETS=true` 설정을 검토합니다. 설정을 변경한 후에는 서버를 재시작합니다.
+
+### 외부 HTTP/DNS 진단이 실패함
+
+회사 방화벽, 프록시, VPN 또는 보안 프로그램이 Python 프로세스의 외부 통신을 제한하는지 확인합니다. 이 애플리케이션은 별도의 프록시 설정 화면을 제공하지 않습니다.
+
+## 운영 시 참고사항
+
+- `--reload` 옵션은 개발 환경에서만 사용합니다.
+- 기본 요청 제한은 클라이언트 IP당 분당 30회입니다.
+- 요청 제한과 동시성 제어는 프로세스별 메모리에 저장되므로 다중 워커 운영에서는 공유되지 않습니다.
+- 리버스 프록시를 사용하면 실제 클라이언트 IP를 처리하도록 `.env`의 `NDT_TRUSTED_PROXY_IPS`에 신뢰할 프록시 IP를 JSON 배열 형식으로 지정합니다.
+- 운영 환경에서는 HTTPS 리버스 프록시, 사용자 인증, 접근 제어를 별도로 구성하는 것이 좋습니다.
