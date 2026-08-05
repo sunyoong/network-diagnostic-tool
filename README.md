@@ -5,17 +5,46 @@
 
 ## 빠른 시작
 
+### Windows PowerShell
+
+프로젝트 루트(`requirements.txt`와 `app` 폴더가 있는 위치)에서 실행합니다. `.venv` 가상환경은 프로젝트 폴더 내부에 생성됩니다.
+
+```powershell
+py -3.12 -m venv .venv
+
+# PowerShell 실행 정책 오류가 발생할 때 현재 창에서만 임시 허용
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+실행 정책을 변경하지 않으려면 가상환경을 활성화하지 않고 다음처럼 직접 실행할 수 있습니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### macOS/Linux
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-cp .env.example .env        # 필요 시 값 수정
-
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+cp .env.example .env
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 브라우저에서 `http://localhost:8000` 접속. API 문서는 `http://localhost:8000/docs`.
+
+상세한 환경 설정과 문제 해결 방법은 [`RUN_GUIDE.md`](RUN_GUIDE.md)를 참고하세요.
 
 ## 테스트
 
