@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import time
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from app.core.deps import enforce_rate_limit, get_diagnostic_semaphore
+from app.core.auth_deps import require_csrf, require_roles
 from app.core.logging import get_logger, mask_sensitive_query
 from app.core.security import TargetNotAllowedError, ValidationError
 from app.schemas.request import HttpCheckRequest
@@ -17,8 +19,9 @@ from app.services.http_service import (
     TooManyRedirectsError,
     perform_http_check,
 )
+from app.services.persistence import persist_diagnostic
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_roles("ADMIN", "OPERATOR")), Depends(require_csrf)])
 logger = get_logger("ndt.http_check")
 
 
@@ -26,6 +29,7 @@ logger = get_logger("ndt.http_check")
 async def http_check(payload: HttpCheckRequest, request: Request):
     request_id = str(uuid.uuid4())
     start = time.monotonic()
+    started_at = datetime.now(timezone.utc)
     masked_url = mask_sensitive_query(payload.url)
 
     try:
@@ -53,6 +57,11 @@ async def http_check(payload: HttpCheckRequest, request: Request):
             content_type=result.content_type,
             server=result.server,
             redirect_count=result.redirect_count,
+        )
+        await persist_diagnostic(
+            request, request_id=request_id, diagnostic_type="HTTP", success=True,
+            result_code="OK", api_status_code=200, duration_ms=duration_ms,
+            started_at=started_at, details={**payload.model_dump(), **data.model_dump()},
         )
         return success_response(data.model_dump(), request_id, duration_ms)
 

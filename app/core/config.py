@@ -50,6 +50,36 @@ class Settings(BaseSettings):
     # 허용 도메인/IP 대역 화이트리스트 (비어있으면 전체 허용, allow_private 정책과 별개로 적용)
     allowed_target_domains: List[str] = Field(default_factory=list)
 
+    # PostgreSQL
+    database_enabled: bool = False
+    diagnostic_persistence_enabled: bool = False
+    database_url: str = "postgresql://netprobe_app:CHANGE_ME@127.0.0.1:5432/netprobe"
+    database_pool_size: int = 10
+    database_max_overflow: int = 10
+    database_pool_timeout_seconds: float = 5.0
+    database_statement_timeout_ms: int = 5000
+    diagnostic_retention_days: int = 90
+    audit_retention_days: int = 180
+    auth_audit_retention_days: int = 365
+    store_raw_client_ip: bool = False
+    client_hash_secret: str = ""
+
+    # 로그인·세션
+    auth_enabled: bool = False
+    session_cookie_name: str = "__Host-netprobe_session"
+    csrf_cookie_name: str = "netprobe_csrf"
+    session_idle_minutes: int = 30
+    session_absolute_hours: int = 8
+    admin_session_absolute_hours: int = 4
+    max_sessions_per_user: int = 5
+    login_max_failures: int = 5
+    login_lock_minutes: int = 15
+    password_history_count: int = 5
+    session_token_pepper: str = ""
+    password_pepper: str = ""
+    cookie_secure: bool = True
+    app_version: str = "1.0.0"
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import time
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from app.core.deps import enforce_rate_limit, get_diagnostic_semaphore
+from app.core.auth_deps import require_csrf, require_roles
 from app.core.logging import get_logger
 from app.core.security import (
     TargetNotAllowedError,
@@ -17,8 +19,9 @@ from app.core.security import (
 from app.schemas.request import PortCheckRequest
 from app.schemas.response import PortCheckData, error_response, success_response
 from app.services.tcp_service import perform_port_check
+from app.services.persistence import persist_diagnostic
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_roles("ADMIN", "OPERATOR")), Depends(require_csrf)])
 logger = get_logger("ndt.port_check")
 
 
@@ -26,6 +29,7 @@ logger = get_logger("ndt.port_check")
 async def port_check(payload: PortCheckRequest, request: Request):
     request_id = str(uuid.uuid4())
     start = time.monotonic()
+    started_at = datetime.now(timezone.utc)
 
     try:
         validated_host = validate_host(payload.host)
@@ -49,6 +53,11 @@ async def port_check(payload: PortCheckRequest, request: Request):
             result=result.result,
             connection_time_ms=result.connection_time_ms,
             message=result.message,
+        )
+        await persist_diagnostic(
+            request, request_id=request_id, diagnostic_type="TCP", success=result.open,
+            result_code=result.result, api_status_code=200, duration_ms=duration_ms,
+            started_at=started_at, details={**payload.model_dump(), **data.model_dump()},
         )
         return success_response(data.model_dump(), request_id, duration_ms)
 

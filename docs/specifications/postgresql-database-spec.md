@@ -2,7 +2,8 @@
 
 > 문서 상태: 구축 전 검토안(Draft)  
 > 대상 애플리케이션: Network Diagnostic Tool  
-> 권장 PostgreSQL: 16 이상  
+> 공식 기준 PostgreSQL: 16.x (권장 설치 버전 16.14, 문법 호환 범위 14~18)
+> DB 접근 방식: `asyncpg >=0.30,<1.0` 직접 SQL, SQLAlchemy/ORM 미사용
 > 작성 기준: 현재 구현된 HTTP, TCP 포트, DNS, 접속 정보 API
 
 ## 1. 문서 목적
@@ -274,7 +275,7 @@ DNS TXT 레코드는 민감정보가 포함될 가능성이 있다. 권장 기�
 
 ## 7. PostgreSQL DDL 초안
 
-아래 DDL은 설계 검토용이다. 실제 구축 시 Alembic 마이그레이션으로 변환한다.
+아래 DDL은 초기 SQL 마이그레이션의 설계 기준이다. 실제 구축에서는 `migrations` 폴더의 번호 기반 SQL 파일로 관리한다.
 
 ```sql
 CREATE TABLE diagnostic_runs (
@@ -481,11 +482,11 @@ DB 구축 후 다음 API 또는 관리자 화면을 2차 기능으로 추가할 
 
 | 구성요소 | 권장 기술 |
 |---|---|
-| ORM | SQLAlchemy 2.x Async ORM |
+| 데이터 접근 | ORM 없이 `asyncpg` 직접 SQL |
 | PostgreSQL 드라이버 | `asyncpg` |
-| 마이그레이션 | Alembic |
-| 연결 관리 | SQLAlchemy `AsyncEngine` 연결 풀 |
-| 데이터 검증 | 기존 Pydantic 모델 + DB 전용 모델 |
+| 마이그레이션 | 번호 기반 SQL 파일 + `schema_migrations` 적용 이력 |
+| 연결 관리 | `asyncpg.Pool` 연결 풀 |
+| 데이터 검증 | 기존 Pydantic 요청·응답 모델 + PostgreSQL 제약조건 |
 
 라우터에서 직접 SQL을 실행하지 않는다. 권장 구성은 다음과 같다.
 
@@ -504,7 +505,7 @@ app/
 ### 12.2 환경변수
 
 ```dotenv
-NDT_DATABASE_URL=postgresql+asyncpg://netprobe_app:CHANGE_ME@127.0.0.1:5432/netprobe
+NDT_DATABASE_URL=postgresql://netprobe_app:CHANGE_ME@127.0.0.1:5432/netprobe
 NDT_DATABASE_POOL_SIZE=10
 NDT_DATABASE_MAX_OVERFLOW=10
 NDT_DATABASE_POOL_TIMEOUT_SECONDS=5
@@ -587,7 +588,7 @@ NDT_CLIENT_HASH_SECRET=CHANGE_ME_WITH_SECRET_MANAGER
 ## 16. 마이그레이션 전략
 
 1. PostgreSQL 인스턴스와 역할을 생성한다.
-2. Alembic 초기 마이그레이션으로 테이블과 인덱스를 생성한다.
+2. `python -m app.cli migrate`로 초기 SQL 마이그레이션을 실행해 테이블과 인덱스를 생성한다.
 3. 애플리케이션 시작 시 마이그레이션을 자동 실행하지 않는다.
 4. 배포 파이프라인 또는 운영 절차에서 마이그레이션을 별도 실행한다.
 5. DB 저장 기능을 기능 플래그로 배포한다.
@@ -652,7 +653,7 @@ NDT_DIAGNOSTIC_PERSISTENCE_ENABLED=false
 ### 1단계: 기반 구축
 
 - PostgreSQL 인스턴스, DB, 역할 생성
-- SQLAlchemy, asyncpg, Alembic 추가
+- `asyncpg` 연결 풀과 직접 SQL 저장소 추가
 - 연결 설정과 `/health` DB 준비 상태 검사
 - 초기 스키마 마이그레이션
 
