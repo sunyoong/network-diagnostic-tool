@@ -1,7 +1,15 @@
 # NetProbe — 네트워크 진단 웹서비스
 
 브라우저에서 HTTP 상태, TCP 포트, DNS 레코드, 접속 정보를 점검할 수 있는 FastAPI 기반
-네트워크 진단 도구입니다. `network-diagnostic-service-spec.md` 명세서를 기준으로 구현했습니다.
+네트워크 진단 도구입니다. `docs/specifications/network-diagnostic-service-spec.md` 명세서를 기준으로 구현했습니다.
+
+## 관련 문서
+
+- [서비스 기능 및 개발 설계 명세](docs/specifications/network-diagnostic-service-spec.md)
+- [PostgreSQL 데이터베이스 명세](docs/specifications/postgresql-database-spec.md)
+- [인증 및 계정 명세](docs/specifications/authentication-account-spec.md)
+- [Windows PostgreSQL 설치 가이드](docs/guides/POSTGRESQL_WINDOWS_INSTALL_GUIDE.md)
+- [PostgreSQL·로그인 기능 사용 가이드](docs/guides/DATABASE_AUTH_GUIDE.md)
 
 ## 빠른 시작
 
@@ -44,7 +52,7 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 브라우저에서 `http://localhost:8000` 접속. API 문서는 `http://localhost:8000/docs`.
 
-상세한 환경 설정과 문제 해결 방법은 [`RUN_GUIDE.md`](RUN_GUIDE.md)를 참고하세요.
+상세한 환경 설정과 문제 해결 방법은 [`RUN_GUIDE.md`](docs/guides/RUN_GUIDE.md)를 참고하세요.
 
 ## 테스트
 

@@ -11,6 +11,23 @@
 | 1차 구현 범위 | HTTP 상태 확인, TCP 포트 확인, DNS 조회, 내 접속 정보 확인 |
 | 주요 사용자 | 네트워크·서버 구성 및 장애 상황을 점검하려는 운영자·학습자 |
 
+### 1.1 개발·운영 기술 기준
+
+| 구분 | 기준 버전 및 정책 |
+|---|---|
+| Python | **3.12.x** |
+| 웹 프레임워크 | FastAPI 0.115.6 |
+| ASGI 서버 | Uvicorn 0.32.1 |
+| PostgreSQL | **16.x** 공식 기준, 권장 설치 버전 16.14 |
+| PostgreSQL 문법 호환 범위 | 14~18. 실제 운영 검증 기준은 16.x |
+| DB 접근 | SQLAlchemy/ORM 미사용, `asyncpg >=0.30,<1.0` 직접 SQL 및 연결 풀 |
+| DB 마이그레이션 | 번호 기반 SQL 파일과 `schema_migrations` 테이블을 사용하는 자체 실행기 |
+| 비밀번호 해시 | Argon2 (`argon2-cffi >=23.1,<26.0`) |
+| 프런트엔드 | HTML5, CSS3, Vanilla JavaScript |
+| 개발 운영체제 | Windows 10/11 64-bit |
+
+Python은 3.12 계열을 기준으로 개발·테스트한다. PostgreSQL은 16.x를 공식 지원 기준으로 고정하며, 메이저 버전을 변경할 때는 SQL 마이그레이션, `asyncpg`, 백업·복구 절차를 별도로 검증한다. 세부 설치 절차는 [`POSTGRESQL_WINDOWS_INSTALL_GUIDE.md`](../guides/POSTGRESQL_WINDOWS_INSTALL_GUIDE.md)를 따른다.
+
 ## 2. 서비스 목표
 
 - 사용자가 브라우저에서 진단 대상 URL, 호스트, 포트를 입력할 수 있다.

@@ -187,3 +187,6 @@ a { color: var(--blue); }
   .history-item { flex-wrap: wrap; }
   .footer { padding: 13px 16px; }
 }
+
+.current-user { padding:0 12px; color:#d8e1e7; font-size:.84rem; }
+.logout-action { width:auto; padding:0 14px; color:#fff; font:inherit; font-size:.82rem; }

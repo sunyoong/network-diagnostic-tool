@@ -20,3 +20,4 @@ Thumbs.db
 
 # Codex temporary import directory
 .codex-import-stage/
+.verify-packages/

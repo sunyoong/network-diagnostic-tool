@@ -28,15 +28,25 @@ function formatLocalTime(isoString) {
   }
 }
 
+function readCookie(name) {
+  const prefix = `${encodeURIComponent(name)}=`;
+  return document.cookie.split("; ").find((part) => part.startsWith(prefix))?.slice(prefix.length) || "";
+}
+
 /** fetch()를 감싸 공통 응답 봉투를 파싱하고 네트워크 오류를 표준화한다. */
 async function callApi(path, { method = "POST", body, signal } = {}) {
   const options = {
     method,
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     signal,
   };
   if (body !== undefined) {
     options.body = JSON.stringify(body);
+  }
+  if (method !== "GET") {
+    const csrf = readCookie("netprobe_csrf");
+    if (csrf) options.headers["X-CSRF-Token"] = decodeURIComponent(csrf);
   }
 
   let response;
@@ -52,6 +62,10 @@ async function callApi(path, { method = "POST", body, signal } = {}) {
     };
   }
 
+  if (response.status === 401) {
+    location.replace("/login");
+    return { success:false, error:{ code:"AUTHENTICATION_REQUIRED", message:"로그인이 필요합니다." } };
+  }
   let envelope;
   try {
     envelope = await response.json();
@@ -582,4 +596,19 @@ document.addEventListener("DOMContentLoaded", () => {
   initClientInfoTab();
   renderHistory();
   qs("history-clear").addEventListener("click", clearHistory);
+  initializeAuthentication();
 });
+
+async function initializeAuthentication() {
+  const envelope = await callApi("/auth/me", { method: "GET" });
+  if (!envelope.success || !envelope.data?.authenticated) return;
+  const user = envelope.data.user;
+  const label = qs("current-user");
+  const logout = qs("logout-button");
+  label.textContent = `${user.display_name} (${user.role})`;
+  label.hidden = false; logout.hidden = false;
+  logout.addEventListener("click", async () => {
+    await callApi("/auth/logout", { method: "POST" });
+    location.replace("/login");
+  });
+}

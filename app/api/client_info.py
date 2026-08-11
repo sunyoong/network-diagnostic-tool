@@ -3,13 +3,14 @@ from __future__ import annotations
 import time
 import uuid
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
+from app.core.auth_deps import require_roles
 from app.core.config import get_settings
 from app.core.deps import get_real_client_ip
 from app.schemas.response import ClientInfoData, success_response
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_roles("ADMIN", "OPERATOR", "VIEWER"))])
 
 
 @router.get("/client-info")
