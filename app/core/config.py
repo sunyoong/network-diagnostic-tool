@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     app_name: str = "Network Diagnostic Tool"
     environment: str = "development"  # development | production
     log_level: str = "INFO"
+    log_file: str = "logs/network-diagnostic.log"
 
     # CORS (분리 배포 시에만 사용)
     cors_allowed_origins: List[str] = Field(default_factory=list)

@@ -141,7 +141,19 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/dns-lookup" `
   -Body '{"domain":"example.com","record_type":"A"}'
 ```
 
-## 8. 테스트 실행
+## 8. JSON 로그 확인
+
+서버를 실행하면 프로젝트 루트의 `logs/network-diagnostic.log` 파일 하나에 로그가 누적됩니다. 각 줄은 독립된 JSON 객체(JSON Lines/NDJSON)이므로 이후 Logstash의 `file` input과 `json` codec으로 바로 수집할 수 있습니다.
+
+기본 경로는 `.env`에서 변경할 수 있습니다.
+
+```env
+NDT_LOG_FILE=logs/network-diagnostic.log
+```
+
+로그 파일에는 `timestamp`, `level`, `service`, `environment`, `event` 공통 필드와 진단별 대상, 성공 여부, 처리 시간이 기록됩니다. HTTP URL의 쿼리와 인증정보 등 민감정보는 파일에 기록하지 않습니다. `logs/` 디렉터리는 실행 중 생성되며 Git에는 포함되지 않습니다.
+
+## 9. 테스트 실행
 
 서버를 별도로 실행하지 않은 상태에서도 프로젝트 루트에서 테스트할 수 있습니다.
 
@@ -149,7 +161,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/dns-lookup" `
 python -m pytest
 ```
 
-## 9. macOS/Linux 실행 명령
+## 10. macOS/Linux 실행 명령
 
 압축을 해제하고 프로젝트 루트로 이동한 뒤 아래 명령을 실행합니다.
 
