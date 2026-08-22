@@ -14,7 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import admin_users, auth, client_info, dns_lookup, history, http_check, port_check
 from app.core.config import get_settings
-from app.core.logging import configure_logging, get_logger
+from app.core.logging import configure_logging, get_logger, log_event
 from app.db.session import database_ready, dispose_engine
 from app.schemas.response import error_response
 
@@ -26,8 +26,12 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    yield
-    await dispose_engine()
+    log_event(logger, 20, "service_started", host="0.0.0.0", version=settings.app_version)
+    try:
+        yield
+    finally:
+        log_event(logger, 20, "service_stopped", reason="shutdown")
+        await dispose_engine()
 
 
 app = FastAPI(

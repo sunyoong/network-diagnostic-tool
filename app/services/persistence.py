@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit, urlunsplit
@@ -9,7 +10,7 @@ from fastapi import Request
 from app.core.auth import hash_client_ip
 from app.core.config import get_settings
 from app.core.deps import get_real_client_ip
-from app.core.logging import get_logger
+from app.core.logging import get_logger, log_event
 from app.db.session import get_pool
 
 logger = get_logger("ndt.persistence")
@@ -31,6 +32,30 @@ async def persist_diagnostic(request: Request, *, request_id: str, diagnostic_ty
     result_code: str, api_status_code: int, duration_ms: int, started_at: datetime,
     details: dict, error_message: str | None = None) -> None:
     settings = get_settings()
+    common = {
+        "request_id": request_id,
+        "api_path": request.url.path,
+        "client_ip": get_real_client_ip(request),
+        "success": success,
+        "duration_ms": max(0, duration_ms),
+    }
+    if diagnostic_type == "HTTP":
+        requested_url, _ = redact_url(details.get("url"))
+        log_event(logger, logging.INFO if success else logging.WARNING, "http_check",
+            **common, target_host=urlsplit(requested_url or "").hostname,
+            target_url=requested_url, http_method=details.get("method"),
+            http_status_code=details.get("status_code"),
+            http_response_time_ms=details.get("response_time_ms"), result_code=result_code)
+    elif diagnostic_type == "TCP":
+        log_event(logger, logging.INFO if success else logging.WARNING, "tcp_check",
+            **common, target_host=details.get("host"), target_port=details.get("port"),
+            tcp_success=bool(details.get("open")),
+            tcp_connect_time_ms=details.get("connection_time_ms"), result_code=result_code)
+    else:
+        log_event(logger, logging.INFO if success else logging.WARNING, "dns_lookup",
+            **common, target_host=details.get("domain"), record_type=details.get("record_type"),
+            resolved_ips=details.get("records") or [], dns_server=details.get("resolver"),
+            dns_response_time_ms=details.get("lookup_time_ms"), result_code=result_code)
     if not (settings.database_enabled and settings.diagnostic_persistence_enabled): return
     completed_at = utcnow(); run_id = uuid.UUID(request_id); client_ip = get_real_client_ip(request)
     context = getattr(request.state, "current_user", None)
