@@ -8,6 +8,7 @@
 - [서비스 기능 및 개발 설계 명세](docs/specifications/network-diagnostic-service-spec.md)
 - [PostgreSQL 데이터베이스 명세](docs/specifications/postgresql-database-spec.md)
 - [인증 및 계정 명세](docs/specifications/authentication-account-spec.md)
+- [JSON Lines 로그 설계 명세](docs/specifications/logging-spec.md)
 - [Windows PostgreSQL 설치 가이드](docs/guides/POSTGRESQL_WINDOWS_INSTALL_GUIDE.md)
 - [PostgreSQL·로그인 기능 사용 가이드](docs/guides/DATABASE_AUTH_GUIDE.md)
 

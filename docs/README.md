@@ -7,6 +7,7 @@
 - [네트워크 진단 서비스 기능·개발 설계 명세](specifications/network-diagnostic-service-spec.md)
 - [PostgreSQL 데이터베이스 명세](specifications/postgresql-database-spec.md)
 - [인증 및 계정 명세](specifications/authentication-account-spec.md)
+- [JSON Lines 로그 설계 명세](specifications/logging-spec.md)
 
 ## 설치 및 실행 가이드
 
