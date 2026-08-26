@@ -5,6 +5,7 @@
 
 ## 관련 문서
 
+- [curl API 호출 매뉴얼](docs/guides/API_MANUAL.md)
 - [서비스 기능 및 개발 설계 명세](docs/specifications/network-diagnostic-service-spec.md)
 - [PostgreSQL 데이터베이스 명세](docs/specifications/postgresql-database-spec.md)
 - [인증 및 계정 명세](docs/specifications/authentication-account-spec.md)
