@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import time
-import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
@@ -9,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.deps import enforce_rate_limit, get_diagnostic_semaphore
 from app.core.auth_deps import require_csrf, require_roles
-from app.core.logging import get_logger, mask_sensitive_query
+from app.core.logging import get_request_id
 from app.core.security import TargetNotAllowedError, ValidationError
 from app.schemas.request import HttpCheckRequest
 from app.schemas.response import HttpCheckData, error_response, success_response
@@ -22,15 +21,23 @@ from app.services.http_service import (
 from app.services.persistence import persist_diagnostic
 
 router = APIRouter(dependencies=[Depends(require_roles("ADMIN", "OPERATOR")), Depends(require_csrf)])
-logger = get_logger("ndt.http_check")
 
 
 @router.post("/http-check", dependencies=[Depends(enforce_rate_limit)])
 async def http_check(payload: HttpCheckRequest, request: Request):
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id(request)
     start = time.monotonic()
     started_at = datetime.now(timezone.utc)
-    masked_url = mask_sensitive_query(payload.url)
+
+    async def failure(code: str, message: str, status_code: int):
+        request.state.result_code = code
+        duration_ms = int((time.monotonic() - start) * 1000)
+        await persist_diagnostic(
+            request, request_id=request_id, diagnostic_type="HTTP", success=False,
+            result_code=code, api_status_code=status_code, duration_ms=duration_ms,
+            started_at=started_at, details=payload.model_dump(), error_message=message,
+        )
+        return JSONResponse(status_code=status_code, content=error_response(code, message, request_id, duration_ms))
 
     try:
         async with get_diagnostic_semaphore():
@@ -41,10 +48,6 @@ async def http_check(payload: HttpCheckRequest, request: Request):
                 follow_redirects=payload.follow_redirects,
             )
         duration_ms = int((time.monotonic() - start) * 1000)
-        logger.info(
-            f"path=/api/v1/http-check request_id={request_id} result=OK "
-            f"duration_ms={duration_ms} url={masked_url}"
-        )
         data = HttpCheckData(
             url=result.url,
             final_url=result.final_url,
@@ -63,61 +66,22 @@ async def http_check(payload: HttpCheckRequest, request: Request):
             result_code="OK", api_status_code=200, duration_ms=duration_ms,
             started_at=started_at, details={**payload.model_dump(), **data.model_dump()},
         )
+        request.state.result_code = "OK"
         return success_response(data.model_dump(), request_id, duration_ms)
 
     except ValidationError as exc:
-        duration_ms = int((time.monotonic() - start) * 1000)
-        logger.warning(f"path=/api/v1/http-check request_id={request_id} result=VALIDATION_ERROR url={masked_url}")
-        return JSONResponse(
-            status_code=422,
-            content=error_response("VALIDATION_ERROR", str(exc), request_id, duration_ms),
-        )
+        return await failure("VALIDATION_ERROR", str(exc), 422)
     except TargetNotAllowedError as exc:
-        duration_ms = int((time.monotonic() - start) * 1000)
-        logger.warning(f"path=/api/v1/http-check request_id={request_id} result=TARGET_NOT_ALLOWED url={masked_url}")
-        return JSONResponse(
-            status_code=403,
-            content=error_response("TARGET_NOT_ALLOWED", str(exc), request_id, duration_ms),
-        )
+        return await failure("TARGET_NOT_ALLOWED", str(exc), 403)
     except DnsFailedError as exc:
-        duration_ms = int((time.monotonic() - start) * 1000)
-        logger.warning(f"path=/api/v1/http-check request_id={request_id} result=DNS_RESOLUTION_FAILED url={masked_url}")
-        return JSONResponse(
-            status_code=400,
-            content=error_response("DNS_RESOLUTION_FAILED", str(exc), request_id, duration_ms),
-        )
+        return await failure("DNS_RESOLUTION_FAILED", str(exc), 400)
     except TimeoutError as exc:
-        duration_ms = int((time.monotonic() - start) * 1000)
-        logger.info(f"path=/api/v1/http-check request_id={request_id} result=CONNECTION_TIMEOUT url={masked_url}")
-        return JSONResponse(
-            status_code=200,
-            content=error_response("CONNECTION_TIMEOUT", "대상 서버가 제한 시간 내에 응답하지 않았습니다.", request_id, duration_ms),
-        )
+        return await failure("CONNECTION_TIMEOUT", "대상 서버가 제한 시간 내에 응답하지 않았습니다.", 200)
     except ConnectionRefusedError as exc:
-        duration_ms = int((time.monotonic() - start) * 1000)
-        logger.info(f"path=/api/v1/http-check request_id={request_id} result=CONNECTION_REFUSED url={masked_url}")
-        return JSONResponse(
-            status_code=200,
-            content=error_response("CONNECTION_REFUSED", "대상 서버가 연결을 거부했습니다.", request_id, duration_ms),
-        )
+        return await failure("CONNECTION_REFUSED", "대상 서버가 연결을 거부했습니다.", 200)
     except TlsOrTransportError as exc:
-        duration_ms = int((time.monotonic() - start) * 1000)
-        logger.info(f"path=/api/v1/http-check request_id={request_id} result=TLS_ERROR url={masked_url}")
-        return JSONResponse(
-            status_code=200,
-            content=error_response("TLS_ERROR", "HTTPS 인증서 또는 TLS 연결에 실패했습니다.", request_id, duration_ms),
-        )
+        return await failure("TLS_ERROR", "HTTPS 인증서 또는 TLS 연결에 실패했습니다.", 200)
     except TooManyRedirectsError as exc:
-        duration_ms = int((time.monotonic() - start) * 1000)
-        logger.info(f"path=/api/v1/http-check request_id={request_id} result=TLS_ERROR url={masked_url}")
-        return JSONResponse(
-            status_code=200,
-            content=error_response("CONNECTION_TIMEOUT", "리다이렉트 횟수 제한을 초과했습니다.", request_id, duration_ms),
-        )
+        return await failure("TOO_MANY_REDIRECTS", "리다이렉트 횟수 제한을 초과했습니다.", 200)
     except Exception as exc:  # noqa: BLE001
-        duration_ms = int((time.monotonic() - start) * 1000)
-        logger.error(f"path=/api/v1/http-check request_id={request_id} result=INTERNAL_SERVER_ERROR error={type(exc).__name__}")
-        return JSONResponse(
-            status_code=500,
-            content=error_response("INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다.", request_id, duration_ms),
-        )
+        return await failure("INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다.", 500)

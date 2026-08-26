@@ -14,12 +14,16 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import admin_users, auth, client_info, dns_lookup, history, http_check, port_check
 from app.core.config import get_settings
-from app.core.logging import configure_logging, get_logger, log_event
+from app.core.auth import hash_client_ip
+from app.core.deps import get_real_client_ip
+from app.core.logging import configure_logging, get_logger, get_request_id, log_event
 from app.db.session import database_ready, dispose_engine
 from app.schemas.response import error_response
+from app.services.audit import persist_http_audit
 
 configure_logging()
 logger = get_logger("ndt.app")
+audit_logger = get_logger("ndt.audit")
 settings = get_settings()
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -55,11 +59,36 @@ if settings.cors_allowed_origins:
 async def response_middleware(request: Request, call_next):
     start = time.monotonic()
     request.state.start_time = start
+    request.state.request_id = str(uuid.uuid4())
     response = await call_next(request)
+    duration_ms = int((time.monotonic() - start) * 1000)
     response.headers["X-Response-Time-ms"] = str(int((time.monotonic() - start) * 1000))
+    response.headers["X-Request-ID"] = request.state.request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
+    context = getattr(request.state, "current_user", None)
+    route = request.scope.get("route")
+    route_path = getattr(route, "path", request.url.path)
+    level = 20 if response.status_code < 400 else 30 if response.status_code < 500 else 40
+    audit_fields = dict(
+        request_id=request.state.request_id,
+        http_method=request.method,
+        api_path=request.url.path,
+        route_template=route_path,
+        http_status_code=response.status_code,
+        success=response.status_code < 400,
+        duration_ms=duration_ms,
+        client_key=hash_client_ip(get_real_client_ip(request)),
+        actor_user_id=str(context.user_id) if context else None,
+        actor_role=context.role if context else None,
+        result_code=getattr(request.state, "result_code", None),
+    )
+    log_event(audit_logger, level, "http_request", **audit_fields)
+    await persist_http_audit(
+        actor_user_id=context.user_id if context else None,
+        client_key=audit_fields["client_key"], fields=audit_fields,
+    )
     return response
 
 
@@ -70,24 +99,28 @@ def _elapsed_ms(request: Request) -> int:
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id(request)
     messages = "; ".join(f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors())
+    request.state.result_code = "VALIDATION_ERROR"
     return JSONResponse(status_code=422, content=error_response("VALIDATION_ERROR", messages, request_id, _elapsed_ms(request)))
 
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id(request)
     detail = exc.detail if isinstance(exc.detail, dict) else {}
     code = detail.get("code", "INTERNAL_SERVER_ERROR" if exc.status_code >= 500 else "VALIDATION_ERROR")
+    request.state.result_code = code
     message = detail.get("message", str(exc.detail))
     return JSONResponse(status_code=exc.status_code, content=error_response(code, message, request_id, _elapsed_ms(request)))
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    request_id = str(uuid.uuid4())
-    logger.error(f"path={request.url.path} request_id={request_id} error={type(exc).__name__}")
+    request_id = get_request_id(request)
+    request.state.result_code = "INTERNAL_SERVER_ERROR"
+    log_event(logger, 40, "unhandled_exception", request_id=request_id,
+              api_path=request.url.path, error_type=type(exc).__name__)
     return JSONResponse(status_code=500, content=error_response("INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다.", request_id, _elapsed_ms(request)))
 
 

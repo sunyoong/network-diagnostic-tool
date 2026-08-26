@@ -35,24 +35,24 @@ async def persist_diagnostic(request: Request, *, request_id: str, diagnostic_ty
     common = {
         "request_id": request_id,
         "api_path": request.url.path,
-        "client_ip": get_real_client_ip(request),
+        "client_key": hash_client_ip(get_real_client_ip(request)),
         "success": success,
         "duration_ms": max(0, duration_ms),
     }
     if diagnostic_type == "HTTP":
         requested_url, _ = redact_url(details.get("url"))
-        log_event(logger, logging.INFO if success else logging.WARNING, "http_check",
+        log_event(logger, logging.INFO if success else logging.ERROR if result_code == "INTERNAL_SERVER_ERROR" else logging.WARNING, "http_check",
             **common, target_host=urlsplit(requested_url or "").hostname,
             target_url=requested_url, http_method=details.get("method"),
             http_status_code=details.get("status_code"),
             http_response_time_ms=details.get("response_time_ms"), result_code=result_code)
     elif diagnostic_type == "TCP":
-        log_event(logger, logging.INFO if success else logging.WARNING, "tcp_check",
+        log_event(logger, logging.INFO if success else logging.ERROR if result_code == "INTERNAL_SERVER_ERROR" else logging.WARNING, "tcp_check",
             **common, target_host=details.get("host"), target_port=details.get("port"),
             tcp_success=bool(details.get("open")),
             tcp_connect_time_ms=details.get("connection_time_ms"), result_code=result_code)
     else:
-        log_event(logger, logging.INFO if success else logging.WARNING, "dns_lookup",
+        log_event(logger, logging.INFO if success else logging.ERROR if result_code == "INTERNAL_SERVER_ERROR" else logging.WARNING, "dns_lookup",
             **common, target_host=details.get("domain"), record_type=details.get("record_type"),
             resolved_ips=details.get("records") or [], dns_server=details.get("resolver"),
             dns_response_time_ms=details.get("lookup_time_ms"), result_code=result_code)
@@ -102,7 +102,8 @@ async def persist_diagnostic(request: Request, *, request_id: str, diagnostic_ty
                     len(records), redact, details.get("ttl"), details.get("resolver"), details.get("lookup_time_ms"),
                 )
     except Exception as exc:
-        logger.error(f"request_id={request_id} result=DATABASE_WRITE_FAILED error={type(exc).__name__}")
+        log_event(logger, logging.ERROR, "database_write_failed", request_id=request_id,
+                  operation="persist_diagnostic", error_type=type(exc).__name__)
 
 
 async def list_diagnostics(user_id: uuid.UUID | None, is_admin: bool, limit: int, offset: int) -> list[dict]:

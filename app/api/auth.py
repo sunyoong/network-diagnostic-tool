@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.deps import get_real_client_ip
 from app.schemas.auth import ChangePasswordRequest, LoginRequest
 from app.schemas.response import error_response, success_response
+from app.core.logging import get_request_id
 from app.services.auth_service import authenticate, change_password, revoke_session
 
 router = APIRouter()
@@ -29,7 +30,7 @@ async def login(payload: LoginRequest, request: Request):
     if not settings.auth_enabled:
         raise HTTPException(status_code=404, detail={"code": "AUTH_DISABLED", "message": "로그인 기능이 비활성화되어 있습니다."})
     result = await authenticate(payload.username, payload.password, get_real_client_ip(request), request.headers.get("user-agent"))
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id(request)
     if result is None:
         return JSONResponse(
             status_code=401,
@@ -61,7 +62,7 @@ async def login(payload: LoginRequest, request: Request):
 @router.get("/me")
 async def me(request: Request, context=Depends(require_current_user)):
     if context is None:
-        return success_response({"authenticated": False, "auth_enabled": False}, str(uuid.uuid4()), 0)
+        return success_response({"authenticated": False, "auth_enabled": False}, get_request_id(request), 0)
     return success_response(
         {
             "authenticated": True,
@@ -73,7 +74,7 @@ async def me(request: Request, context=Depends(require_current_user)):
             },
             "must_change_password": context.must_change_password,
         },
-        str(uuid.uuid4()),
+        get_request_id(request),
         0,
     )
 
@@ -82,7 +83,7 @@ async def me(request: Request, context=Depends(require_current_user)):
 async def logout(request: Request, context=Depends(require_current_user)):
     if context is not None:
         await revoke_session(context.session_id, context.user_id)
-    response = JSONResponse(content=success_response({"logged_out": True}, str(uuid.uuid4()), 0))
+    response = JSONResponse(content=success_response({"logged_out": True}, get_request_id(request), 0))
     session_cookie, csrf_cookie = _cookie_names()
     response.delete_cookie(session_cookie, path="/")
     response.delete_cookie(csrf_cookie, path="/")

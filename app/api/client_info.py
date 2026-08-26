@@ -9,13 +9,14 @@ from app.core.auth_deps import require_roles
 from app.core.config import get_settings
 from app.core.deps import get_real_client_ip
 from app.schemas.response import ClientInfoData, success_response
+from app.core.logging import get_request_id
 
 router = APIRouter(dependencies=[Depends(require_roles("ADMIN", "OPERATOR", "VIEWER"))])
 
 
 @router.get("/client-info")
 async def client_info(request: Request):
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id(request)
     start = time.monotonic()
     settings = get_settings()
 

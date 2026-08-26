@@ -79,3 +79,13 @@ class JsonLinesFormatter(logging.Formatter):
 def log_event(logger: logging.Logger, level: int, event: str, **fields: Any) -> None:
     """구조화된 이벤트를 콘솔과 단일 JSON 로그 파일에 기록한다."""
     logger.log(level, event, extra={"event": event, "event_fields": fields})
+
+
+def get_request_id(request: Any) -> str:
+    """Return the middleware request id without trusting a client supplied value."""
+    request_id = getattr(request.state, "request_id", None)
+    if request_id is None:
+        import uuid
+        request_id = str(uuid.uuid4())
+        request.state.request_id = request_id
+    return request_id

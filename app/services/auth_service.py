@@ -12,6 +12,9 @@ from app.core.auth import (
 )
 from app.core.config import get_settings
 from app.db.session import get_pool
+from app.core.logging import get_logger, log_event
+
+logger = get_logger("ndt.auth_audit")
 
 
 def utcnow() -> datetime:
@@ -24,12 +27,24 @@ async def add_auth_event(
     reason_code: str | None = None, client_key: str | None = None,
     session_id: uuid.UUID | None = None, details: dict | None = None,
 ) -> None:
+    # Audit details are deliberately allow-listed: never persist names, email,
+    # passwords, cookies, tokens, request bodies, or arbitrary caller data.
+    details = details or {}
+    safe_details = {key: details[key] for key in ("role", "status", "count") if key in details}
+    log_event(
+        logger, 20 if outcome == "SUCCESS" else 30, "auth_audit",
+        event_type=event_type, outcome=outcome,
+        actor_user_id=str(actor_user_id) if actor_user_id else None,
+        target_user_id=str(target_user_id) if target_user_id else None,
+        reason_code=reason_code, client_key=client_key,
+        details=safe_details,
+    )
     await connection.execute(
         """INSERT INTO auth_audit_events
         (actor_user_id,target_user_id,event_type,outcome,reason_code,client_key,session_id,details,expires_at)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)""",
         actor_user_id, target_user_id, event_type, outcome, reason_code, client_key,
-        session_id, json.dumps(details or {}),
+        session_id, json.dumps(safe_details),
         utcnow() + timedelta(days=get_settings().auth_audit_retention_days),
     )
 

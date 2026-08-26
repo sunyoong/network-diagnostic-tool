@@ -39,7 +39,7 @@ FastAPI 서비스 → logs/network-diagnostic.log (JSON Lines) → Logstash → 
 | --- | --- | --- |
 | `request_id` | UUID 문자열 | 진단 요청 식별자 |
 | `api_path` | 문자열 | 호출 API 경로 |
-| `client_ip` | 문자열 | 요청 클라이언트 IP |
+| `client_key` | 문자열 또는 null | 원본 IP 대신 HMAC으로 생성한 익명 클라이언트 식별자 |
 | `success` | 불리언 | 진단의 성공 여부 |
 | `duration_ms` | 정수 | 전체 처리 시간(밀리초) |
 | `result_code` | 문자열 | 진단 결과 코드 |
@@ -54,6 +54,9 @@ FastAPI 서비스 → logs/network-diagnostic.log (JSON Lines) → Logstash → 
 | `service_started` | 애플리케이션 시작 시 | `host`, `version` |
 | `service_stopped` | 정상 종료 시 | `reason` |
 | `application_log` | 프레임워크·일반 애플리케이션 로그 | `message` |
+| `http_request` | 모든 HTTP 요청 완료 시 | `request_id`, `http_method`, `api_path`, `route_template`, `http_status_code`, `success`, `duration_ms`, `client_key`, `actor_user_id`, `actor_role`, `result_code` |
+| `auth_audit` | 로그인·로그아웃·비밀번호·계정·세션 작업 시 | `event_type`, `outcome`, `actor_user_id`, `target_user_id`, `reason_code`, `client_key`, 허용 목록 기반 `details` |
+| `database_write_failed` | 진단 결과 DB 저장 실패 시 | `request_id`, `operation`, `error_type` |
 
 `tcp_check`는 포트가 닫혀도 진단 자체가 정상적으로 완료된 경우 `success: false`와 결과 코드(`REFUSED`, `TIMEOUT` 등)를 함께 기록한다. Kibana에서는 `success`와 `result_code`를 함께 사용해 실패 원인을 분류한다.
 
@@ -78,6 +81,9 @@ FastAPI 서비스 → logs/network-diagnostic.log (JSON Lines) → Logstash → 
 ## 7. 보안 및 개인정보 원칙
 
 - `Authorization`, `Cookie`, 비밀번호, 토큰, API 키를 기록하지 않는다.
+- 요청 본문, 응답 본문, HTTP 헤더와 URL 쿼리 문자열을 통합 요청 로그에 기록하지 않는다.
+- 원본 클라이언트 IP 대신 서버 비밀키로 생성한 `client_key`를 기록한다.
+- 인증 감사 상세는 `role`, `status`, `count`만 허용하며 이름과 이메일 등 임의 데이터는 제거한다.
 - HTTP 대상 URL은 쿼리 문자열과 fragment를 제거한 값만 진단 결과 이벤트에 기록한다.
 - 요청·응답 본문과 HTTP 응답 본문은 기록하지 않는다.
 - 운영 환경에서 `client_ip` 수집 범위와 보존 기간은 조직의 개인정보 정책에 맞게 별도로 검토한다.
@@ -97,3 +103,7 @@ input {
 ```
 
 Elasticsearch 색인에서는 `timestamp`를 날짜 필드로 매핑하고, `duration_ms`, 응답 시간, 포트는 숫자 필드로 사용한다. `event`, `success`, `result_code`, `target_host`는 Kibana 필터·집계의 주요 기준이다.
+
+DB가 활성화된 환경에서는 `http_request` 감사 이벤트의 동일한 비민감 필드가
+`audit_events` 테이블에도 저장된다. 감사 DB 저장 실패는 API 처리를 중단하지 않고
+`database_write_failed` 파일 로그를 남기는 fail-open 정책을 사용한다.
