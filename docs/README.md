@@ -11,6 +11,7 @@
 
 ## 설치 및 실행 가이드
 
+- [curl API 호출 매뉴얼](guides/API_MANUAL.md)
 - [기본 실행 가이드](guides/RUN_GUIDE.md)
 - [PostgreSQL·로그인 기능 사용 가이드](guides/DATABASE_AUTH_GUIDE.md)
 - [Windows PostgreSQL 설치 가이드](guides/POSTGRESQL_WINDOWS_INSTALL_GUIDE.md)
